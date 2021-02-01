@@ -74,8 +74,7 @@ def CarbonCopy(host, port, signee, signed):
         print("Issuer: {}".format(cert.get_issuer()))
         print("Not before: {}".format(cert.get_notBefore()))
         print("Not after: {}".format(cert.get_notAfter()))
-        print(signee,signed)
-        if not(signee == "" or signed == ""):
+        if signee != None  and signed != None:
             if platform == "win32":
                 print("[+] Platform is Windows OS...")
                 print("[+] Signing %s with signtool.exe..." %(signed))
